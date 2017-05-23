@@ -1,9 +1,16 @@
 <?php namespace Felixkiss\UniqueWithValidator;
 
 use Illuminate\Support\Arr;
+use Illuminate\Support\Str;
 
+/*
+ * Changes to the original version have been borrowed from the following PR made by LittleBigDev
+ *
+ * https://github.com/felixkiss/uniquewith-validator/pull/66/commits/133fb38d07671ae0769fca2d5200f1f3fc81034b
+*/
 class RuleParser
 {
+    protected $connection;
     protected $table;
     protected $primaryField;
     protected $primaryValue;
@@ -28,14 +35,20 @@ class RuleParser
 
     protected function parse()
     {
-        if ($this->parsed) { return; }
+        if ($this->parsed) {
+            return;
+        }
+
         $this->parsed = true;
 
         // cleaning: trim whitespace
         $this->parameters = array_map('trim', $this->parameters);
 
-        // first item equals table name
-        $this->table = array_shift($this->parameters);
+        // Parse connection & table name
+        list($connection, $table) = $this->parseTable(array_shift($this->parameters));
+
+        $this->connection = $connection;
+        $this->table = $table;
 
         // Check if ignore data is set
         $this->parseIgnore();
@@ -77,6 +90,12 @@ class RuleParser
         }
 
         $this->dataFields = array_values(array_unique($this->dataFields));
+    }
+
+    public function getConnection()
+    {
+        $this->parse();
+        return $this->connection;
     }
 
     public function getTable()
@@ -125,7 +144,10 @@ class RuleParser
     {
         // Ignore has to be specified as the last parameter
         $lastParameter = end($this->parameters);
-        if (!$this->isIgnore($lastParameter)) { return; }
+
+        if (!$this->isIgnore($lastParameter)) {
+            return;
+        }
 
         $lastParameter = array_map('trim', explode('=', $lastParameter));
 
@@ -187,5 +209,20 @@ class RuleParser
         }
 
         return $field;
+    }
+
+    /**
+     * Parse the connection / table for the unique / exists rules.
+     *
+     * @param  string  $table
+     * @return array
+     */
+    protected function parseTable($table)
+    {
+        if (method_exists(get_parent_class($this), 'parseTable')) {
+            return parent::parseTable($table);
+        }
+
+        return Str::contains($table, '.') ? explode('.', $table, 2) : [null, $table];
     }
 }

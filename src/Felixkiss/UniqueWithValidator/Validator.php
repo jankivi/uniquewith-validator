@@ -3,6 +3,11 @@
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 
+/*
+ * Changes to the original version have been borrowed from the following PR made by LittleBigDev
+ *
+ * https://github.com/felixkiss/uniquewith-validator/pull/66/commits/133fb38d07671ae0769fca2d5200f1f3fc81034b
+*/
 class Validator
 {
     public function validateUniqueWith($attribute, $value, $parameters, $validator)
@@ -14,6 +19,9 @@ class Validator
         // permanent data store like Redis, etc. We will use it to determine
         // uniqueness.
         $presenceVerifier = $validator->getPresenceVerifier();
+
+        // Set the connection
+        $presenceVerifier->setConnection($ruleParser->getConnection());
 
         return $presenceVerifier->getCount(
             $ruleParser->getTable(),
@@ -33,7 +41,7 @@ class Validator
         $customAttributes = $translator->trans('validation.attributes');
 
         // Check if translator has custom validation attributes for the fields
-        $fields = array_map(function($field) use ($customAttributes) {
+        $fields = array_map(function ($field) use ($customAttributes) {
             return Arr::get($customAttributes, $field) ?: str_replace('_', ' ', Str::snake($field));
         }, $fields);
 
